@@ -12,9 +12,9 @@ relogio = pg.time.Clock()
 fonte = pg.font.Font(None, 30)
 
 #variáveis
+cartas = []
 
 #cartas normais
-cartas = []
 cores = ["y", "r", "g", "b"]
 
 for cor in cores:
@@ -214,9 +214,11 @@ while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
-        elif event.type == pg.MOUSEMOTION: 
-            posicao_mouse = pg.mouse.get_pos()
+        
     
+    #Bolo 
+    bolo = []
+
     #carta inicial
     def sorteando():
         sorteio = randint(0, len(cartas)-1)
@@ -226,7 +228,10 @@ while True:
     carta_inicial = cartas[num_carta_inicial]["imagem"]
     cartas.remove(cartas[num_carta_inicial])
     carta_inicial = pg.transform.scale(carta_inicial, (400, 600))
-    
+    bolo.append(carta_inicial)
+
+    #embaralhando o bolo
+
     #cartas dos players
     def escolhendo_cartas(a):
         for i in range(7):
@@ -239,19 +244,52 @@ while True:
 
     #jogador
     cartas_jogador = []
+    quantidade_cartas_jogador = len(cartas_jogador)
     escolhendo_cartas(cartas_jogador)
         
     #computador
     cartas_computador = []
+    quantidade_cartas_computador = len(cartas_computador)
     escolhendo_cartas(cartas_computador)
 
-    #Quem começa? 
-    primeira_jogada = choice(['jogador', 'computador'])
+    def jogadas_do_jogador():
+        carta_selecionada = 0
+        for event in pg.event.get():
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_0:
+                    carta_selecionada = 0
+                if event.key == pg.K_1:
+                    carta_selecionada = 1
+                if event.key == pg.K_2:
+                    carta_selecionada = 2
+                if event.key == pg.K_3:
+                    carta_selecionada = 3
+                if event.key == pg.K_4:
+                    carta_selecionada = 4
+                if event.key == pg.K_5:
+                    carta_selecionada = 5
+                if event.key == pg.K_6:
+                    carta_selecionada = 6
+                if event.key == pg.K_o:
+                    print('Jogador só tem uma carta!')
+        
+        if bolo[-1]['cor'] == cartas_jogador[carta_selecionada]['cor'] or bolo[-1]['numero'] == cartas_jogador[carta_selecionada]['numero'] or cartas_jogador[carta_selecionada]['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
+            print('Jogada válida!')
+            bolo.append(cartas_jogador[carta_selecionada])
+            cartas_jogador.pop(carta_selecionada)
+        
+    #Quem começa?
+    while quantidade_cartas_jogador > 0 and quantidade_cartas_computador > 0:
+        primeira_jogada = choice(['jogador', 'computador'])
+        print(f'Quem começa: {primeira_jogada}')
+        
+            
+    
 
     #elementos na tela
     tela.fill((255, 0, 0))
 
-    tela.blit(carta_inicial, (tela.get_width()//2 - carta_inicial.get_width()//2, tela.get_height()//2 - carta_inicial.get_height()//2))
+    tela.blit(bolo[-1], (tela.get_width()//2 - bolo[-1].get_width()//2, tela.get_height()//2 - bolo[-1].get_height()//2))
 
     #cartas do jogador na tela
     for c in range(len(cartas_jogador)):
