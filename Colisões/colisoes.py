@@ -8,7 +8,7 @@ running = True
 mouse_x, mouse_y = 0, 0
 font = py.font.Font(None, 100)
 posição_x, posição_y = 50, 200
-rect = py.Rect(posição_x, posição_y, 30, 30)
+rect = py.Rect(posição_x, posição_y, 30, 30) # rect é a variavel representando a caixa de colisão (hitbox); py.Rect torna a variavel para funcionar como um Rect.
 texto_surface = font.render("...", True, (0, 0, 0))
 
 while running:
@@ -23,6 +23,8 @@ while running:
             mouse_pos = py.mouse.get_pos()
             if rect.collidepoint(mouse_pos):
                 texto_surface = font.render("Clicou na hitbox!", True, (0, 0, 0))
+
+    # O texto mudará quando o mouse clicar no figure; "rect.collide..." é a principal ferramenta usada para indicar colisões
 
 
     screen.fill((255, 255, 255))
@@ -39,3 +41,4 @@ while running:
     print(f"Mouse está em {mouse_x}, {mouse_y}")
 
 py.quit()
+
