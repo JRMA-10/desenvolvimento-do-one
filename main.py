@@ -1,5 +1,5 @@
 import pygame as pg
-from random import choice
+from random import choice, randint
 from time import sleep
 
 #Iniciar pygame
@@ -8,16 +8,83 @@ pg.init()
 tela = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 relogio = pg.time.Clock()
 
+#Fontes
+fonte = pg.font.Font(None, 30)
 
 #variáveis
-n1 = {'amarelo' : 1, 'verde' : 1, 'azul' : 1, 'vermelho' : 1}
-n2 = {'amarelo' : 2, 'verde' : 2, 'azul' : 2, 'vermelho' : 2}
-n3 = {'amarelo' : 3, 'verde' : 3, 'azul' : 3, 'vermelho' : 3}
-n4 = {'amarelo' : 4, 'verde' : 4, 'azul' : 4, 'vermelho' : 4}
 
+#cartas normais
+cartas = []
+cores = ["y", "r", "g", "b"]
 
+for cor in cores:
+    for numero in range(10):
+        cartas.append({
+            "tipo": "normal",
+            "cor": cor,
+            "numero": numero,
+            "imagem": pg.image.load(f'imgs/{cor}{numero}.png').convert()
+        })
+#cartas especiais
+cartas.append({
+    "tipo": "+4",
+    "cor": None,
+    "numero": None,
+    "imagem": pg.image.load('imgs/+4.png').convert()
+})
+cartas.append({
+    "tipo": "-4",
+    "cor": None,
+    "numero": None,
+    "imagem": pg.image.load('imgs/-4.png').convert()
+})
+for cor in cores:
+    cartas.append({
+        "tipo": "+2",
+        "cor": cor,
+        "numero": None,
+        "imagem": pg.image.load(f'imgs/{cor}+2.png').convert()
+    })
+    cartas.append({
+        "tipo": "bloqueio",
+        "cor": cor,
+        "numero": None,
+        "imagem": pg.image.load(f'imgs/{cor}bloqueio.png').convert()
+    })
+    cartas.append({
+        "tipo": "reverse",
+        "cor": cor,
+        "numero": None,
+        "imagem": pg.image.load(f'imgs/{cor}reverse.png').convert()
+    })
+cartas.append({
+    "tipo": "comunista",
+    "cor": None,
+    "numero": None,
+    "imagem": pg.image.load('imgs/comunista.png').convert()
+})
+cartas.append({
+    "tipo": "tornado",
+    "cor": None,
+    "numero": None,
+    "imagem": pg.image.load('imgs/tornado.png').convert()
+})
 
+'''''
+Carregar imagens; 
+Identidade das cartas; 
+Cartas iniciais e dos players;
+Criar o bolo principal; 
+loop das jogadas dos players e do computador cuja condição é: while cartas_jogador == 0 or cartas_computador == 0; 
+    vez do jogador()
+    if cor_carta_escolhida == cor_carta_inicial or numero_carta_escolhida == numero_carta_bolo:
+        jogar_carta()
+    else:
+        comprar_carta()
+        vez do computador()
+'''
 
+'''
 #amarelas
 y0 = pg.image.load('imgs/y0.png').convert()
 y1 = pg.image.load('imgs/y1.png').convert()
@@ -51,7 +118,6 @@ g6 = pg.image.load('imgs/g6.png').convert()
 g7 = pg.image.load('imgs/g7.png').convert()
 g8 = pg.image.load('imgs/g8.png').convert()
 g9 = pg.image.load('imgs/g9.png').convert()
-
 #azuis
 b0 = pg.image.load('imgs/b0.png').convert()
 b1 = pg.image.load('imgs/b1.png').convert()
@@ -93,11 +159,11 @@ g_reverse = pg.image.load('imgs/greverse.png').convert()
 
 #tornado 
 tornado = pg.image.load('imgs/tornado.png').convert()
+'''
 
 
 
-
-
+'''
 #bolo de cartas
 bolo = []
 
@@ -105,7 +171,7 @@ bolo = []
 cartas_comuns = [y0, y1, y2, y3, y4, y5, y6, y7, y8, y9,
           b0, b1, b2, b3, b4, b5, b6, b7, b8, b9,
           g0, g1, g2, g3, g4, g5, g6, g7, g8, g9,
-          r0, r1, r2, r3, r4, r5, r6, r7, r8,] * 2
+          r0, r1, r2, r3, r4, r5, r6, r7, r8, r9] * 2
 for item in cartas_comuns:
     bolo.append(item)
 
@@ -139,7 +205,7 @@ bolo.append(comunista)
 
 #Adicionado carta tornado ao bolo
 bolo.append(tornado)
-
+'''
 
 
 
@@ -148,17 +214,26 @@ while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
+        elif event.type == pg.MOUSEMOTION: 
+            posicao_mouse = pg.mouse.get_pos()
     
     #carta inicial
-    carta_inicial = choice(bolo)
-    bolo.remove(carta_inicial)
+    def sorteando():
+        sorteio = randint(0, len(cartas)-1)
+        return sorteio
+
+    num_carta_inicial = sorteando()
+    carta_inicial = cartas[num_carta_inicial]["imagem"]
+    cartas.remove(cartas[num_carta_inicial])
     carta_inicial = pg.transform.scale(carta_inicial, (400, 600))
     
     #cartas dos players
     def escolhendo_cartas(a):
         for i in range(7):
-            carta = choice(bolo)
-            bolo.remove(carta)
+            sorteando()
+            num_carta_escolhida = sorteando()
+            carta = cartas[num_carta_escolhida]["imagem"]
+            cartas.remove(cartas[num_carta_escolhida])
             carta = pg.transform.scale(carta, (100, 200))
             a.append(carta)
 
@@ -170,6 +245,9 @@ while True:
     cartas_computador = []
     escolhendo_cartas(cartas_computador)
 
+    #Quem começa? 
+    primeira_jogada = choice(['jogador', 'computador'])
+
     #elementos na tela
     tela.fill((255, 0, 0))
 
@@ -179,7 +257,8 @@ while True:
     for c in range(len(cartas_jogador)):
         tela.blit(cartas_jogador[c], (tela.get_width() // 2 - cartas_jogador[c].get_width() // 2 - 150*c, tela.get_height() - cartas_jogador[c].get_height() - 20))
     
+    
 
     pg.display.flip()
-    sleep(5)
-    relogio.tick(60)
+    
+    relogio.tick(1)
