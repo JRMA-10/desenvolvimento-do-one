@@ -33,6 +33,8 @@ while running:
     figura.fill((0, 0, 0))
     screen.blit(figura, (posição_x, posição_y))
 
+    # Rect não cria imagens, textos e nem nada, apenas indica que há um ponto não visivel marcado em tal lugar, vulgo as hitboxes. Usei posição_x e y para colocar a hitbox a figure no mesmo espaço, assim, quando mouse clicar no figure (py.MOUSEBUTTONDOWN), irá ativar o ponto de colisão.
+
     screen.blit(texto_surface, (15, 40))
 
     py.display.flip()
@@ -41,4 +43,5 @@ while running:
     print(f"Mouse está em {mouse_x}, {mouse_y}")
 
 py.quit()
+
 
