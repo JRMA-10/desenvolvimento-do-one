@@ -1,99 +1,95 @@
 import pygame as pg
-from random import choice, randint
-from time import sleep
+from random import randint, choice, shuffle
+import time
 
-#Iniciar pygame
+# INICIALIZAÇÃO
 pg.init()
-
 tela = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+LARGURA, ALTURA = tela.get_size()
 relogio = pg.time.Clock()
 
-#Fontes
-fonte = pg.font.Font(None, 30)
+fonte = pg.font.Font(None, 26)
+fonte_grande = pg.font.Font(None, 36)
 
-#variáveis
-cartas = []
+# CORES
+BRANCO = (255, 255, 255)
+AMARELO = (255, 255, 0)
+VERDE = (20, 120, 20)
+VERMELHO = (200, 0, 0)
 
-#cartas normais
-cores = ["y", "r", "g", "b"]
+# CARTAS
+def carregar_cartas():
+    cartas = []
+    cores = ["y", "r", "g", "b"]
 
-for cor in cores:
-    for numero in range(10):
-        cartas.append({
-            "tipo": "normal",
-            "cor": cor,
-            "numero": numero,
-            "imagem": pg.image.load(f'imgs/{cor}{numero}.png').convert()
-        })
+    for cor in cores:
+        for num in range(10):
+            cartas.append({
+                "tipo": "normal",
+                "cor": cor,
+                "numero": num,
+                "imagem": pg.image.load(f"imgs/{cor}{num}.png").convert_alpha()
+            })
 
-#cartas especiais
-cartas.append({
-    "tipo": "+4",
-    "cor": None,
-    "numero": None,
-    "imagem": pg.image.load('imgs/+4.png').convert()
-})
-cartas.append({
-    "tipo": "-4",
-    "cor": None,
-    "numero": None,
-    "imagem": pg.image.load('imgs/-4.png').convert()
-})
-for cor in cores:
-    cartas.append({
-        "tipo": "+2",
-        "cor": cor,
-        "numero": None,
-        "imagem": pg.image.load(f'imgs/{cor}+2.png').convert()
-    })
-    cartas.append({
-        "tipo": "bloqueio",
-        "cor": cor,
-        "numero": None,
-        "imagem": pg.image.load(f'imgs/{cor}bloqueio.png').convert()
-    })
-    cartas.append({
-        "tipo": "reverse",
-        "cor": cor,
-        "numero": None,
-        "imagem": pg.image.load(f'imgs/{cor}reverse.png').convert()
-    })
-cartas.append({
-    "tipo": "comunista",
-    "cor": None,
-    "numero": None,
-    "imagem": pg.image.load('imgs/comunista.png').convert()
-})
-cartas.append({
-    "tipo": "tornado",
-    "cor": None,
-    "numero": None,
-    "imagem": pg.image.load('imgs/tornado.png').convert()
-})
+    for cor in cores:
+        cartas.append({"tipo": "+2", 
+                       "cor": cor, 
+                       "numero": None,
+                       "imagem": pg.image.load(f"imgs/{cor}+2.png").convert_alpha()})
+        cartas.append({"tipo": "bloqueio", 
+                       "cor": cor, 
+                       "numero": None,
+                       "imagem": pg.image.load(f"imgs/{cor}bloqueio.png").convert_alpha()})
+        cartas.append({"tipo": "reverse", 
+                       "cor": cor, 
+                       "numero": None,
+                       "imagem": pg.image.load(f"imgs/{cor}reverse.png").convert_alpha()})
+
+    cartas.append({"tipo": "+4", 
+                   "cor": None, 
+                   "numero": None,
+                   "imagem": pg.image.load("imgs/+4.png").convert_alpha()})
+    cartas.append({"tipo": "+10", 
+                   "cor": None, 
+                   "numero": None,
+                   "imagem": pg.image.load("imgs/+10.png").convert_alpha()})
+    cartas.append({"tipo": "-4", 
+                   "cor": None, 
+                   "numero": None,
+                   "imagem": pg.image.load("imgs/-4.png").convert_alpha()})
+    cartas.append({"tipo": "tornado", 
+                   "cor": None, 
+                   "numero": None,
+                   "imagem": pg.image.load("imgs/tornado.png").convert_alpha()})
+
+    return cartas
+
+cartas = carregar_cartas()
+shuffle(cartas)
+
 
 #Bolo 
 bolo = []
 
-#carta inicial
+
+#Funções principais
 def sorteando():
     sorteio = randint(0, len(cartas)-1)
     return sorteio
 
-#Funções principais
-
 #cartas dos players
-def escolhendo_cartas(a):
+def distribuindo(mao):
     for i in range(7):
         num_carta_escolhida = sorteando()
         carta = cartas[num_carta_escolhida]
         cartas.remove(cartas[num_carta_escolhida])
-        a.append(carta)
+        mao.append(carta)
     
 
 def posso_jogar():
     contador = 0
     for carta in cartas_computador:
-        if carta['cor'] == ultima_carta_do_bolo['cor'] or carta['numero'] == ultima_carta_do_bolo['numero'] or carta['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
+        if carta['cor'] == ultima['cor'] or carta['numero'] == ultima['numero'] or carta['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
             contador += 1
     return contador
 
@@ -102,11 +98,6 @@ def puxar_cartas(vez_de, lista_de_cartas):
     if num == 0:
         print(f'{vez_de} não tem cartas jogáveis!')
         lista_de_cartas.append(cartas[0])
-    else:
-        jogadas_do_jogador()
-
-#Recuperando a última carta do bolo
-ultima_carta_do_bolo = bolo[-1]
 
 def jogadas_do_jogador():
     puxar_cartas('Player', cartas_jogador)
@@ -130,7 +121,7 @@ def jogadas_do_jogador():
             if event.key == pg.K_o:
                 print('Jogador só tem uma carta!')
     
-    if bolo[ultima_carta_do_bolo]['cor'] == cartas_jogador[carta_selecionada]['cor'] or bolo[ultima_carta_do_bolo]['numero'] == cartas_jogador[carta_selecionada]['numero'] or cartas_jogador[carta_selecionada]['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
+    if ultima['cor'] == cartas_jogador[carta_selecionada]['cor'] or ultima['numero'] == cartas_jogador[carta_selecionada]['numero'] or cartas_jogador[carta_selecionada]['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
         print('Jogada válida!')
         bolo.append(cartas_jogador[carta_selecionada])
         cartas_jogador.pop(carta_selecionada)
@@ -139,42 +130,47 @@ def jogada_computador():
     puxar_cartas('Computador', cartas_computador)
     possiveis_jogadas = []
     for carta in cartas_computador:
-        if carta['cor'] == ultima_carta_do_bolo['cor'] or carta['numero'] == ultima_carta_do_bolo['numero'] or carta['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
+        if carta['cor'] == ultima['cor'] or carta['numero'] == ultima['numero'] or carta['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
             possiveis_jogadas.append(carta)
     escolha = randint(0, len(possiveis_jogadas) - 1)
     jogada_final = possiveis_jogadas[escolha]
     bolo.append(jogada_final)
     cartas.remove(jogada_final)
 
+#carta inicial do bolo
+num_carta_inicial = sorteando()
+carta_inicial = cartas[num_carta_inicial]
+cartas.remove(cartas[num_carta_inicial])
+bolo.append(carta_inicial)
+
+#Recuperando a última carta do bolo
+ultima = bolo[-1]
+
+#jogador
+cartas_jogador = []
+quantidade_cartas_jogador = len(cartas_jogador)
+distribuindo(cartas_jogador)
+    
+#computador
+cartas_computador = []
+quantidade_cartas_computador = len(cartas_computador)
+distribuindo(cartas_computador)
+
 while True:
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
 
-    num_carta_inicial = sorteando()
-    carta_inicial = cartas[num_carta_inicial]
-    cartas.remove(cartas[num_carta_inicial])
-    bolo.append(carta_inicial)
-
-
-    #jogador
-    cartas_jogador = []
-    quantidade_cartas_jogador = len(cartas_jogador)
-    escolhendo_cartas(cartas_jogador)
-        
-    #computador
-    cartas_computador = []
-    quantidade_cartas_computador = len(cartas_computador)
-    escolhendo_cartas(cartas_computador)
-    
     #transformando as cartas
     last_card_image = bolo[-1]['imagem']
     last_card_image = pg.transform.scale(last_card_image, (400, 600))
 
-    #elementos na tela
-    tela.fill((255, 0, 0))
-
     tela.blit(last_card_image, (tela.get_width()//2 - last_card_image.get_width()//2, tela.get_height()//2 - last_card_image.get_height()//2))
+
+    #elementos na tela
+    tela.fill(VERMELHO)
+
+    
 
     #cartas do jogador na tela
     for c in range(len(cartas_jogador)):
