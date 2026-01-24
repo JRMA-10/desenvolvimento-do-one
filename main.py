@@ -1,297 +1,314 @@
 import pygame as pg
-from random import randint, shuffle, choice
+from random import shuffle, choice
 
-# INICIALIZAÇÃO
 pg.init()
-tela = pg.display.set_mode((0, 0), pg.FULLSCREEN)
-LARGURA, ALTURA = tela.get_size()
-relogio = pg.time.Clock()
+TELA = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+LARGURA, ALTURA = TELA.get_size()
+FPS = 60
+RELOGIO = pg.time.Clock()
 
-fonte = pg.font.Font(None, 26)
-fonte_grande = pg.font.Font(None, 36)
+FONTE = pg.font.Font(None, 28)
+FONTE_GRANDE = pg.font.Font(None, 40)
 
-# CORES
-BRANCO = (255, 255, 255)
-PRETO = (0, 0, 0)
+BRANCO, PRETO, VERMELHO, VERDE, AMARELO = (255,255,255),(0,0,0),(200,0,0),(0,200,0),(200,200,0)
+COSTA = pg.image.load("imgs/costa.png").convert_alpha()
 
-#Contadores
-tempo_limite_turno = 10000
-tempo_inicio_turno = pg.time.get_ticks()
+#ESTADOS
+TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
 
-# CARTAS
-def carregar_cartas():
-    cartas = []
-    cores = ["y", "r", "g", "b"]
+#TELA INICIAL
+class TelaInicial:
+    def __init__(self):
+        self.fundo = pg.transform.scale(pg.image.load("imgs/tela_inicial.png").convert_alpha(),(LARGURA, ALTURA))
+        self.play = pg.transform.scale(pg.image.load("imgs/Play.png").convert_alpha(),(220, 110))
+        self.play_rect = self.play.get_rect(center=(LARGURA//2 - 220, ALTURA//2 + 200))
+        self.config = pg.transform.scale(pg.image.load("imgs/Gear.png").convert_alpha(),(110, 110))
+        self.config_rect = self.config.get_rect(center=(LARGURA//2 + 220, ALTURA//2 + 200))
 
-    for cor in cores:
-        for num in range(10):
-            cartas.append({
-                "tipo": "normal",
-                "cor": cor,
-                "numero": num,
-                "imagem": pg.image.load(f"imgs/{cor}{num}.png").convert_alpha()
-            })
+    def desenhar(self):
+        TELA.blit(self.fundo, (0, 0))
+        TELA.blit(self.play, self.play_rect)
+        TELA.blit(self.config, self.config_rect)
+        pg.display.flip()
 
-    for cor in cores:
-        cartas.append({"tipo": "+2", 
-                       "cor": cor, 
-                       "numero": None,
-                       "imagem": pg.image.load(f"imgs/{cor}+2.png").convert_alpha()})
-        cartas.append({"tipo": "bloqueio", 
-                       "cor": cor, 
-                       "numero": None,
-                       "imagem": pg.image.load(f"imgs/{cor}bloqueio.png").convert_alpha()})
-        cartas.append({"tipo": "reverse", 
-                       "cor": cor, 
-                       "numero": None,
-                       "imagem": pg.image.load(f"imgs/{cor}reverse.png").convert_alpha()})
+    def clicar_play(self, pos):
+        return self.play_rect.collidepoint(pos)
 
-    cartas.append({"tipo": "+4", 
-                   "cor": None, 
-                   "numero": None,
-                   "imagem": pg.image.load("imgs/+4.png").convert_alpha()})
-    cartas.append({"tipo": "+10", 
-                   "cor": None, 
-                   "numero": None,
-                   "imagem": pg.image.load("imgs/+10.png").convert_alpha()})
-    cartas.append({"tipo": "-4", 
-                   "cor": None, 
-                   "numero": None,
-                   "imagem": pg.image.load("imgs/-4.png").convert_alpha()})
-    cartas.append({"tipo": "tornado", 
-                   "cor": None, 
-                   "numero": None,
-                   "imagem": pg.image.load("imgs/tornado.png").convert_alpha()})
-    cartas.append({"tipo": "comunista", 
-                   "cor": None,
-                   "numero": None,
-                   "imagem": pg.image.load("imgs/comunista.png").convert_alpha()})
+    def clicar_config(self, pos):
+        return self.config_rect.collidepoint(pos)
 
-    return cartas
+#CARTAS
+class Carta:
+    def __init__(self, tipo, cor = None, numero = None):
+        self.tipo = tipo
+        self.cor = cor
+        self.numero = numero
+        nome = cor + str(numero) if tipo == "normal" else (cor + tipo if cor else tipo)
+        self.img = pg.image.load(f"imgs/{nome}.png").convert_alpha()
 
-cartas = carregar_cartas()
-shuffle(cartas)
+class Jogador:
+    def __init__(self, nome):
+        self.nome = nome
+        self.mao = []
+        self.uno = False
 
-#Bolo 
-bolo = []
+#JOGO
+class Jogo:
+    def __init__(self):
+        self.estado = TELA_INICIAL #estado do jogo
+        self.tela_inicial = TelaInicial()
 
-#Telas do jogo:
-MENU_INICIAL = 0
-JOGO = 1
-PAUSA = 2
-TELA_FINAL = 3
-ESTADO = MENU_INICIAL
+        self.baralho = self.criar_baralho()
+        self.bolo = []
 
-#Menu inical 
-def menu_inicial():
-    global ESTADO
-    tela_inicial = pg.image.load("imgs/tela_inicial.png").convert()
-    tela.blit(tela_inicial, (0,0))
+        self.jogador = Jogador("Jogador")
+        self.computador = Jogador("Computador")
+        self.turno = choice([self.jogador, self.computador])
 
-    if event.type == pg.MOUSEBUTTONDOWN:
-        ESTADO = JOGO
+        self.mensagem = None #Mensagens que aparecerão na tela
+        self.msg_tempo = 0
 
+        self.contador_one = 0
+        self.contador_turno = 0
+        self.tempo_turno = 10 * FPS
 
-#Funções principais
-def sorteando(cartas):
-    return randint(0, len(cartas)-1) 
+        self.distribuir(7) #Distribuição das cartas para os jogadores
+        self.carta_inicial()
 
-#cartas dos players
-def distribuindo(mao, cartas):
-    for i in range(7):
-        num_carta_escolhida = sorteando(cartas)
-        carta = cartas[num_carta_escolhida]
-        cartas.remove(cartas[num_carta_escolhida])
-        mao.append(carta)
+        self.rodando = True
+
+    #BARALHO
+    def criar_baralho(self):
+        baralho = []
+        cores = ["y","r","g","b"]
+        for cor in cores:
+            for n in range(10):
+                baralho.extend([Carta("normal", cor, n) for _ in range(2)])
+            for t in ["+2", "bloqueio", "reverse"]:
+                baralho.append(Carta(t, cor))
+        for t in ["+4","+10","-4","tornado","comunista"]:
+            baralho.append(Carta(t))
+        shuffle(baralho)
+        return baralho
+
+    def distribuir(self, qtd):
+        for _ in range(qtd):
+            self.jogador.mao.append(self.baralho.pop()) #A mão do jogador recebe cartas do baralho e estas são excluidas do baralho
+            self.computador.mao.append(self.baralho.pop())
+
+    def carta_inicial(self):
+        while True: #Não pode começar com carta especial
+            c = self.baralho.pop()
+            if c.tipo == "normal":
+                self.bolo.append(c)
+                break
+            self.baralho.insert(0, c)
+
+    def ultima(self):
+        return self.bolo[-1] #Retornar última carta
+
+    def carta_valida(self, carta):
+        ultima = self.ultima()
+        return (
+            carta.tipo in ["+4","+10","-4","tornado","comunista"]
+            or carta.cor == ultima.cor
+            or carta.numero == ultima.numero
+        )
+
+    def jogador_tem_jogada(self):
+        return any(self.carta_valida(c) for c in self.jogador.mao)
+
+    #MENSAGENS
+    def msg(self, texto, cor=BRANCO):
+        self.mensagem = (texto, cor)
+        self.msg_tempo = 3 * FPS
+
+    #FIM / ONE
+    def checar_uno(self):
+        if len(self.jogador.mao) == 1 and not self.jogador.uno:
+            self.msg("Pressione O para ONE!", AMARELO)
+        if len(self.computador.mao) == 1 and not self.computador.uno:
+            self.msg("Computador só tem UMA carta!", AMARELO)
+            self.computador.uno = True
+
+        if len(self.jogador.mao) > 1:
+            self.jogador.uno = False
+        if len(self.computador.mao) > 1:
+            self.computador.uno = False
+
+    def checar_fim(self):
+        if len(self.jogador.mao) == 0:
+            self.msg("Parabéns! Você ganhou!", VERDE)
+            self.estado = TELA_FINAL
+        elif len(self.computador.mao) == 0:
+            self.msg("O computador venceu!", VERMELHO)
+            self.estado = TELA_FINAL
+
+    #JOGO
+    def puxar(self, jogador, qtd=1):
+        for i in range(qtd):
+            if self.baralho:
+                jogador.mao.append(self.baralho.pop())
     
+    def devolver(self, jogador, qtd=1):
+        for i in range(qtd):
+            if jogador.mao:
+                self.baralho.append(jogador.mao.pop())
+        shuffle(self.baralho)
 
-def puxar_cartas(mao):
-    contador = 0
-    for carta in mao:
-        if carta['cor'] == ultima['cor'] or carta['numero'] == ultima['numero'] or carta['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
-            contador += 1
-    if contador == 0:
-        return True
-    return False
+    def jogar_computador(self):
+        self.contador_turno += 1
+        if self.contador_turno < 5 * FPS:
+            return
 
-def puxar_cartas_mais(lista_de_cartas, cartas):
-    if ultima['tipo'] == '+2':
-        for i in range(2):
-            lista_de_cartas.append(cartas[0])
-            cartas.pop(0)
-    elif ultima['tipo'] == '+4':
-        for i in range(4):
-            lista_de_cartas.append(cartas[0])
-            cartas.pop(0)
-    elif ultima['tipo'] == '+10':
-        for i in range(10):
-            lista_de_cartas.append(cartas[0])
-            cartas.pop(0)
-    elif ultima['tipo'] == '-4':
-        for i in range(4):
-            cartas.append(lista_de_cartas[0])
-            lista_de_cartas.pop(0)
+        jogada = self.computador
+        jogaveis = []
+        for c in jogada.mao:
+            if self.carta_valida(c):
+                jogaveis.append(c) #lista "jogaveis" tem as cartas válidas para jogar
 
-def funcao_tornado(mao1, mao2):
-    mao1[:], mao2[:] = mao2[:], mao1[:]
-
-def carta_valida(carta, ultima):
-    return (carta["cor"] == ultima["cor"]
-        or carta["numero"] == ultima["numero"]
-        or carta["tipo"] == "+4"
-        or carta["tipo"] == "+10"
-        or carta["tipo"] == "-4"
-        or carta["tipo"] == "tornado"
-        or carta["tipo"] == "comunista"
-    )
-
-carta_selecionada = {}
-def jogadas_do_jogador(mao, bolo, carta_selecionada):
-    if not carta_selecionada:
-        return
-    if carta_valida(carta_selecionada, ultima):
-        bolo.append(carta_selecionada)
-        mao.remove(carta_selecionada)
-    else:
-        print("Jogada inválida!")
-
-def jogadas_computador(mao, bolo):
-    possiveis_jogadas = []
-    for carta in mao:
-        if carta['cor'] == ultima['cor'] or carta['numero'] == ultima['numero'] or carta['tipo'] in ['+4', '-4', 'comunista', 'tornado']:
-            possiveis_jogadas.append(carta)
-    if len(possiveis_jogadas) == 0: #Se o computador não tiver cartas válidas, ele puxa uma carta
-        mao.append(cartas[0])
-        cartas.pop(0)
-    else:
-        escolha = randint(0, len(possiveis_jogadas) - 1)
-        jogada_final = possiveis_jogadas[escolha]
-        bolo.append(jogada_final)
-        mao.remove(jogada_final)
-
-def cartas_de_acao(mao):
-    global turno, tempo_inicio_turno
-    if ultima['tipo'] == 'bloqueio':
-        tempo_inicio_turno = pg.time.get_ticks()
-        if turno == 'jogador':
-            turno = 'computador'
+        if not jogaveis:
+            self.puxar(jogada)
+            self.msg("Computador puxou 1!", VERMELHO)
+            self.turno = self.jogador
         else:
-            turno = 'jogador'
-    if puxar_cartas(mao) == True:
-        mao.append(cartas[0])
-        cartas.pop(0)
-        tempo_inicio_turno = pg.time.get_ticks()
-        if turno == 'jogador':
-            turno = 'computador'
+            c = choice(jogaveis)
+            jogada.mao.remove(c)
+            self.bolo.append(c)
+            self.efeito(c, self.jogador)
+
+        self.contador_turno = 0
+
+    def efeito(self, carta, oponente):
+        j = self.turno
+        if carta.tipo == "+2":
+            self.puxar(oponente, 2)
+            self.msg(f"{oponente.nome} puxou 2!", VERMELHO)
+            self.turno = oponente
+        elif carta.tipo in ["+4", "+10"]:
+            self.puxar(oponente, 4 if carta.tipo == "+4" else 10)
+            self.msg(f"{oponente.nome} puxou {carta.tipo}!", VERMELHO)
+            self.turno = oponente
+        elif carta.tipo == "-4":
+            self.puxar(oponente, 4)
+            self.msg("Efeito -4!", VERMELHO)
+            self.turno = oponente
+        elif carta.tipo == "tornado":
+            self.jogador.mao, self.computador.mao = self.computador.mao, self.jogador.mao
+            self.msg("Tornado! Mãos trocadas!", VERDE)
+        elif carta.tipo == "bloqueio":
+            self.msg("Turno bloqueado!", AMARELO)
+            self.turno = j
+        elif carta.tipo == "reverse":
+            self.msg("Inversão de turno!", AMARELO)
+            self.turno = j
+        elif carta.tipo == "comunista":
+            while len(self.jogador.mao) < 5 and self.baralho:
+                self.jogador.mao.append(self.baralho.pop())
+            while len(self.computador.mao) < 5 and self.baralho:
+                self.computador.mao.append(self.baralho.pop())
+            self.msg("Comunista! Cartas igualadas", VERDE)
+            self.turno = oponente
         else:
-            turno = 'jogador'
-    if ultima['tipo'] == 'tornado':
-        funcao_tornado(cartas_jogador, cartas_computador)
-        if turno == 'jogador':
-            turno = 'computador'
-        else:
-            turno = 'jogador'
+            self.turno = oponente
 
-#carta inicial do bolo
-num_carta_inicial = sorteando(cartas)
-carta_inicial = cartas[num_carta_inicial]
-cartas.remove(cartas[num_carta_inicial])
-bolo.append(carta_inicial)
+    #DESENHO
+    def desenhar_jogo(self):
+        TELA.fill(PRETO)
 
-#jogador
-cartas_jogador = []
-quantidade_cartas_jogador = len(cartas_jogador)
-distribuindo(cartas_jogador, cartas)
-    
-#computador
-cartas_computador = []
-quantidade_cartas_computador = len(cartas_computador)
-distribuindo(cartas_computador, cartas)
+        TELA.blit(pg.transform.scale(self.ultima().img,(400,600)), (LARGURA//2-200, ALTURA//2-300))
 
-#Turno
-turno = choice(['jogador', 'computador'])
+        largura, altura, espacamento = 100 ,150, 20
+        total = len(self.jogador.mao)*(largura+espacamento)-espacamento
+        x0 = LARGURA//2-total//2
+        y0 = ALTURA-altura-30
+
+        mouse = pg.mouse.get_pos()
+        click = pg.mouse.get_pressed()[0]
+
+        for i, c in enumerate(self.jogador.mao[:]):
+            x = x0 + i * (largura+espacamento)
+            rect = pg.Rect(x, y0, largura, altura)
+            y = y0 - 30 if rect.collidepoint(mouse) else y0
+
+            TELA.blit(pg.transform.scale(c.img, (largura,altura)), (x, y))
+            if click and rect.collidepoint(mouse) and self.turno == self.jogador and self.carta_valida(c):
+                self.jogador.mao.remove(c)
+                self.bolo.append(c)
+                self.efeito(c, self.computador)
+                self.contador_turno = 0
+
+        # computador
+        largura_c, altura_c, espacamento_c = 60,90,10
+        total_c = len(self.computador.mao) * (largura_c+espacamento_c) - espacamento_c
+        x0c = LARGURA // 2 - total_c // 2
+        for i in range(len(self.computador.mao)):
+            TELA.blit(pg.transform.scale(COSTA,(largura_c,altura_c)),
+                      (x0c + i * (largura_c+espacamento_c), 30))
+
+        # textos
+        if self.mensagem:
+            txt, cor = self.mensagem
+            texto_surf = FONTE_GRANDE.render(txt, True, cor)
+            texto_rect = texto_surf.get_rect(center = (LARGURA//2, 155))  #centraliza horizontalmente
+            TELA.blit(texto_surf, texto_rect)
+            self.msg_tempo -= 1
+            if self.msg_tempo <= 0:
+                self.mensagem = None
+
+
+        TELA.blit(FONTE.render(f"Turno: {self.turno.nome}", True, AMARELO),(20, 20))
+        TELA.blit(FONTE.render(f"Cartas computador: {len(self.computador.mao)}", True, BRANCO), (20, 50))
+        TELA.blit(FONTE.render(f"Tempo restante: {max(0,(self.tempo_turno-self.contador_turno)//FPS)}s",True, BRANCO), (20, 80))
+
+        pg.display.flip()
+
+#Loop
+jogo = Jogo()
 
 while True:
-    relogio.tick(60)
-    tela.fill(PRETO)
+    RELOGIO.tick(FPS)
+
     for event in pg.event.get():
         if event.type == pg.QUIT:
             pg.quit()
-    
-    if ESTADO == MENU_INICIAL:
-        menu_inicial()
-    
-    if ESTADO == JOGO:
-        
-        tempo_restante = max(0, (tempo_limite_turno - (pg.time.get_ticks() - tempo_inicio_turno)) // 1000)
-        tela.blit(
-            fonte.render(f"Turno: {turno.upper()} | Tempo: {tempo_restante}s", True, BRANCO),
-            (20, 20)
-        )
-        
-        #Recuperando a última carta do bolo
-        ultima = bolo[-1]
-        def aparicao_ultima_carta():
-            last_card_image = ultima['imagem']
-            last_card_image = pg.transform.scale(last_card_image, (400, 600))
-            tela.blit(last_card_image, (LARGURA//2 - last_card_image.get_width()//2, ALTURA//2 - last_card_image.get_height()//2))
-        aparicao_ultima_carta()
+            exit()
 
-        #Pegando posição do mouse e clique
-        mouse_pos = pg.mouse.get_pos()
-        mouse_click = pg.mouse.get_pressed()[0]
+        if event.type == pg.KEYDOWN and event.key == pg.K_o and len(jogo.jogador.mao)==1:
+            jogo.jogador.uno = True
 
-        # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        # APARIÇÃO DAS CARTAS DO JOGADOR    
-        # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        largura = 100
-        altura = 150
-        espacamento = 20
+        if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
+            if jogo.estado==TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
+                jogo.estado = TELA_JOGO
+            if jogo.estado==TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
+                jogo.msg("Configurações não implementadas.", AMARELO)
 
-        total = len(cartas_jogador) * (largura + espacamento) - espacamento # usei (- espacamento) para não adicionar espaço extra na última carta
-        inicio_x = LARGURA//2 - total//2
-        y = ALTURA - altura - 30
+    if jogo.estado == TELA_INICIAL:
+        jogo.tela_inicial.desenhar()
 
-        for i, carta in enumerate(cartas_jogador): # i retorna o índice da carta e carta retorna a própria carta
-            x = inicio_x + i * (largura + espacamento)
-            rect = pg.Rect(x, y, largura, altura)
+    elif jogo.estado == TELA_JOGO:
 
-            sobre_carta = rect.collidepoint(mouse_pos)
-            if sobre_carta:
-                y_anim = y - 30
-            else:
-                y_anim = y
+        if jogo.turno == jogo.jogador:
+            jogo.contador_turno += 1
 
-            img = pg.transform.scale(carta["imagem"], (largura, altura))
-            tela.blit(img, (x, y_anim))
+            if not jogo.jogador_tem_jogada():
+                jogo.puxar(jogo.jogador)
+                jogo.msg("Sem jogada válida. Você puxou 1!", VERMELHO)
+                jogo.turno = jogo.computador
+                jogo.contador_turno = 0
 
-            if sobre_carta and mouse_click and turno == 'jogador':
-                carta_selecionada = carta
+            elif jogo.contador_turno >= jogo.tempo_turno:
+                jogo.puxar(jogo.jogador)
+                jogo.msg("Tempo esgotado! Você puxou 1!", VERMELHO)
+                jogo.turno = jogo.computador
+                jogo.contador_turno = 0
 
-        # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        # LÓGICA DO JOGADOR
-        # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        if turno == 'jogador':
-            #fim = pg.time.get_ticks()
-            puxar_cartas_mais(cartas_jogador, cartas)
-            cartas_de_acao(cartas_jogador)
-            jogadas_do_jogador(cartas_jogador, bolo, carta_selecionada)
-            if tempo_restante == 0:
-                print("Tempo acabou!")
-                turno = 'computador'
-                tempo_inicio_turno = pg.time.get_ticks()
-        ultima = bolo[-1]
-        aparicao_ultima_carta()
+        else:
+            jogo.jogar_computador()
 
-        # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-        # LÓGICA DO COMPUTADOR
-        # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        jogo.checar_uno()
+        jogo.checar_fim()
+        jogo.desenhar_jogo()
 
-        if turno == 'computador':
-            puxar_cartas_mais(cartas_computador, cartas)
-            cartas_de_acao(cartas_computador)
-            pg.time.delay(500)
-            jogadas_computador(cartas_computador, bolo)
-            turno = 'jogador'
-
-    pg.display.flip()
+    elif jogo.estado == TELA_FINAL:
+        jogo.desenhar_jogo()
