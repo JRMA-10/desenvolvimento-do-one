@@ -38,6 +38,9 @@ class TelaInicial:
     def clicar_config(self, pos):
         return self.config_rect.collidepoint(pos)
 
+class TelaFinal:
+    pass
+
 #CARTAS
 class Carta:
     def __init__(self, tipo, cor = None, numero = None):
@@ -188,6 +191,8 @@ class Jogo:
         self.contador_turno = 0
 
     def efeito(self, carta, oponente):
+        def nome_cor(cor):
+            return {"r":"vermelha", "g":"verde", "b":"azul", "y":"amarela"}[cor]
         j = self.turno
         if carta.tipo == "+2":
             self.puxar(oponente, 2)
@@ -196,20 +201,20 @@ class Jogo:
         elif carta.tipo in ["+4", "+10"]:
             self.puxar(oponente, 4 if carta.tipo == "+4" else 10)
             self.msg(f"{oponente.nome} puxou {carta.tipo}!", VERMELHO)
-            carta.cor == choice(["r","g","b","y"])
-            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
+            carta.cor = choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {nome_cor(carta.cor)}!", AMARELO)
             self.turno = oponente
         elif carta.tipo == "-4":
             self.devolver(j, 4)
             self.msg("Efeito -4!", VERMELHO)
-            carta.cor == choice(["r","g","b","y"])
-            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
+            carta.cor = choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {nome_cor(carta.cor)}!", AMARELO)
             self.turno = oponente
         elif carta.tipo == "tornado":
             self.jogador.mao, self.computador.mao = self.computador.mao, self.jogador.mao
             self.msg("Tornado! Mãos trocadas!", VERDE)
-            carta.cor == choice(["r","g","b","y"])
-            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
+            carta.cor = choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {nome_cor(carta.cor)}!", AMARELO)
         elif carta.tipo == "bloqueio":
             self.msg("Turno bloqueado!", AMARELO)
             self.turno = j
@@ -229,21 +234,9 @@ class Jogo:
                 metade = quantidade_total // 2
                 self.jogador.mao = cartas_totais[:metade]
                 self.computador.mao = cartas_totais[metade:]
-            '''if len(self.jogador.mao) > 5:
-                while len(self.jogador.mao) != 5:
-                    self.jogador.mao.pop()
-            else:
-                while len(self.computador.mao) != 5 and self.baralho:
-                    self.jogador.mao.append(self.baralho.pop())
-            if len(self.computador.mao) > 5:
-                while len(self.computador.mao) != 5:
-                    self.computador.mao.pop()
-            else:
-                while len(self.computador.mao) != 5 and self.baralho:
-                    self.computador.mao.append(self.baralho.pop())'''
             self.msg("Comunista! Cartas igualadas", VERDE)
-            carta.cor == choice(["r","g","b","y"])
-            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
+            carta.cor = choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {nome_cor(carta.cor)}!", AMARELO)
             self.turno = oponente
         else:
             self.turno = oponente
@@ -275,7 +268,7 @@ class Jogo:
                 self.contador_turno = 0
 
         # computador
-        largura_c, altura_c, espacamento_c = 60, 90, 10
+        largura_c, altura_c, espacamento_c = 60, 90, 20
         total_c = len(self.computador.mao) * (largura_c + espacamento_c) - espacamento_c
         x0c = LARGURA // 2 - total_c // 2
         for i in range(len(self.computador.mao)):
