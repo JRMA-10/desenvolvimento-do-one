@@ -12,6 +12,7 @@ FONTE_GRANDE = pg.font.Font(None, 40)
 
 BRANCO, PRETO, VERMELHO, VERDE, AMARELO = (255,255,255),(0,0,0),(200,0,0),(0,200,0),(200,200,0)
 COSTA = pg.image.load("imgs/costa.png").convert_alpha()
+TELA_JOGO = pg.transform.scale(pg.image.load("imgs/tela_de_jogo.png").convert_alpha(),(LARGURA, ALTURA))
 
 #ESTADOS
 TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
@@ -58,6 +59,7 @@ class Jogo:
         self.estado = TELA_INICIAL #estado do jogo
         self.tela_inicial = TelaInicial()
 
+        self.tela_de_jogo = TELA_JOGO
         self.baralho = self.criar_baralho()
         self.bolo = []
 
@@ -80,10 +82,10 @@ class Jogo:
     #BARALHO
     def criar_baralho(self):
         baralho = []
-        cores = ["y","r","g","b"]
+        cores = ["y", "r", "g", "b"]
         for cor in cores:
-            for n in range(10):
-                baralho.extend([Carta("normal", cor, n) for _ in range(2)])
+            for numero in range(10):
+                baralho.extend([Carta("normal", cor, numero) for i in range(2)])
             for t in ["+2", "bloqueio", "reverse"]:
                 baralho.append(Carta(t, cor))
         for t in ["+4","+10","-4","tornado","comunista"]:
@@ -92,7 +94,7 @@ class Jogo:
         return baralho
 
     def distribuir(self, qtd):
-        for _ in range(qtd):
+        for i in range(qtd):
             self.jogador.mao.append(self.baralho.pop()) #A mão do jogador recebe cartas do baralho e estas são excluidas do baralho
             self.computador.mao.append(self.baralho.pop())
 
@@ -117,6 +119,8 @@ class Jogo:
 
     def jogador_tem_jogada(self):
         return any(self.carta_valida(c) for c in self.jogador.mao)
+
+    
 
     #MENSAGENS
     def msg(self, texto, cor=BRANCO):
@@ -151,10 +155,14 @@ class Jogo:
                 jogador.mao.append(self.baralho.pop())
     
     def devolver(self, jogador, qtd=1):
-        for i in range(qtd):
-            if jogador.mao:
+        if len(jogador.mao) <= 4:
+            while len(jogador.mao) > 1:
                 self.baralho.append(jogador.mao.pop())
-        shuffle(self.baralho)
+        else:
+            for i in range(qtd):
+                if jogador.mao:
+                    self.baralho.append(jogador.mao.pop())
+            shuffle(self.baralho)
 
     def jogar_computador(self):
         self.contador_turno += 1
@@ -188,14 +196,20 @@ class Jogo:
         elif carta.tipo in ["+4", "+10"]:
             self.puxar(oponente, 4 if carta.tipo == "+4" else 10)
             self.msg(f"{oponente.nome} puxou {carta.tipo}!", VERMELHO)
+            carta.cor == choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
             self.turno = oponente
         elif carta.tipo == "-4":
-            self.puxar(oponente, 4)
+            self.devolver(j, 4)
             self.msg("Efeito -4!", VERMELHO)
+            carta.cor == choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
             self.turno = oponente
         elif carta.tipo == "tornado":
             self.jogador.mao, self.computador.mao = self.computador.mao, self.jogador.mao
             self.msg("Tornado! Mãos trocadas!", VERDE)
+            carta.cor == choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
         elif carta.tipo == "bloqueio":
             self.msg("Turno bloqueado!", AMARELO)
             self.turno = j
@@ -203,11 +217,33 @@ class Jogo:
             self.msg("Inversão de turno!", AMARELO)
             self.turno = j
         elif carta.tipo == "comunista":
-            while len(self.jogador.mao) < 5 and self.baralho:
-                self.jogador.mao.append(self.baralho.pop())
-            while len(self.computador.mao) < 5 and self.baralho:
-                self.computador.mao.append(self.baralho.pop())
+            cartas_totais = self.jogador.mao + self.computador.mao
+            quantidade_total = len(cartas_totais)
+            shuffle(cartas_totais)
+            if quantidade_total % 2 == 0:
+                metade = quantidade_total // 2
+                self.jogador.mao = cartas_totais[:metade]
+                self.computador.mao = cartas_totais[metade:]
+            else: 
+                cartas_totais.append(self.baralho.pop())
+                metade = quantidade_total // 2
+                self.jogador.mao = cartas_totais[:metade]
+                self.computador.mao = cartas_totais[metade:]
+            '''if len(self.jogador.mao) > 5:
+                while len(self.jogador.mao) != 5:
+                    self.jogador.mao.pop()
+            else:
+                while len(self.computador.mao) != 5 and self.baralho:
+                    self.jogador.mao.append(self.baralho.pop())
+            if len(self.computador.mao) > 5:
+                while len(self.computador.mao) != 5:
+                    self.computador.mao.pop()
+            else:
+                while len(self.computador.mao) != 5 and self.baralho:
+                    self.computador.mao.append(self.baralho.pop())'''
             self.msg("Comunista! Cartas igualadas", VERDE)
+            carta.cor == choice(["r","g","b","y"])
+            self.msg(f"A cor escolhida foi {carta.cor}!", AMARELO)
             self.turno = oponente
         else:
             self.turno = oponente
@@ -218,16 +254,16 @@ class Jogo:
 
         TELA.blit(pg.transform.scale(self.ultima().img,(400,600)), (LARGURA//2-200, ALTURA//2-300))
 
-        largura, altura, espacamento = 100 ,150, 20
-        total = len(self.jogador.mao)*(largura+espacamento)-espacamento
-        x0 = LARGURA//2-total//2
+        largura, altura, espacamento = 100 , 150, 20
+        total = len(self.jogador.mao) * (largura + espacamento) - espacamento
+        x0 = LARGURA//2 - total//2
         y0 = ALTURA-altura-30
 
         mouse = pg.mouse.get_pos()
         click = pg.mouse.get_pressed()[0]
 
         for i, c in enumerate(self.jogador.mao[:]):
-            x = x0 + i * (largura+espacamento)
+            x = x0 + i * (largura + espacamento)
             rect = pg.Rect(x, y0, largura, altura)
             y = y0 - 30 if rect.collidepoint(mouse) else y0
 
@@ -239,12 +275,12 @@ class Jogo:
                 self.contador_turno = 0
 
         # computador
-        largura_c, altura_c, espacamento_c = 60,90,10
-        total_c = len(self.computador.mao) * (largura_c+espacamento_c) - espacamento_c
+        largura_c, altura_c, espacamento_c = 60, 90, 10
+        total_c = len(self.computador.mao) * (largura_c + espacamento_c) - espacamento_c
         x0c = LARGURA // 2 - total_c // 2
         for i in range(len(self.computador.mao)):
-            TELA.blit(pg.transform.scale(COSTA,(largura_c,altura_c)),
-                      (x0c + i * (largura_c+espacamento_c), 30))
+            TELA.blit(pg.transform.scale(COSTA,(largura_c, altura_c)),
+                      (x0c + i * (largura_c + espacamento_c), 30))
 
         # textos
         if self.mensagem:
