@@ -12,7 +12,6 @@ FONTE_GRANDE = pg.font.Font(None, 40)
 
 BRANCO, PRETO, VERMELHO, VERDE, AMARELO = (255,255,255),(0,0,0),(200,0,0),(0,200,0),(200,200,0)
 COSTA = pg.image.load("imgs/costa.png").convert_alpha()
-TELA_JOGO = pg.transform.scale(pg.image.load("imgs/tela_de_jogo.png").convert_alpha(),(LARGURA, ALTURA))
 
 #ESTADOS
 TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
@@ -21,10 +20,10 @@ TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
 class TelaInicial:
     def __init__(self):
         self.fundo = pg.transform.scale(pg.image.load("imgs/tela_inicial.png").convert_alpha(),(LARGURA, ALTURA))
-        self.play = pg.transform.scale(pg.image.load("imgs/Play.png").convert_alpha(),(220, 110))
-        self.play_rect = self.play.get_rect(center=(LARGURA//2 - 220, ALTURA//2 + 200))
+        self.play = pg.transform.scale(pg.image.load("imgs/Play.png").convert_alpha(),(250, 110))
+        self.play_rect = self.play.get_rect(center = (LARGURA // 2 - 110, ALTURA//2 + 200))
         self.config = pg.transform.scale(pg.image.load("imgs/Gear.png").convert_alpha(),(110, 110))
-        self.config_rect = self.config.get_rect(center=(LARGURA//2 + 220, ALTURA//2 + 200))
+        self.config_rect = self.config.get_rect(center=(LARGURA//2 + 110, ALTURA//2 + 200))
 
     def desenhar(self):
         TELA.blit(self.fundo, (0, 0))
@@ -39,7 +38,29 @@ class TelaInicial:
         return self.config_rect.collidepoint(pos)
 
 class TelaFinal:
-    pass
+    def __init__(self, vencedor):
+        self.tela_final = pg.transform.scale(pg.image.load("imgs/tela_final.png").convert_alpha(),(LARGURA, ALTURA))
+        self.texto_vencedor = FONTE.render(f"{vencedor} venceu!", True, BRANCO)
+        self.texto_vencedor_rect = self.texto_vencedor.get_rect(center = (LARGURA//2, ALTURA//2 + 50))
+        
+        self.menu = pg.transform.scale(pg.image.load("imgs/Menu.png").convert_alpha(),(250, 110))
+        self.menu_rect = self.menu.get_rect(center = (LARGURA // 2  - 60, ALTURA // 2 + 200))
+
+        self.reiniciar = pg.transform.scale(pg.image.load("imgs/Reiniciar.png").convert_alpha(),(250, 110))
+        self.reiniciar_rect = self.reiniciar.get_rect(center=(LARGURA//2 + 60, ALTURA//2 + 200))
+
+    def desenhar(self):
+        TELA.blit(self.tela_final, (0, 0))
+        TELA.blit(self.texto_vencedor, self.texto_vencedor_rect)
+        TELA.blit(self.menu, self.menu_rect)
+        TELA.blit(self.reiniciar, self.reiniciar_rect)
+        pg.display.flip()
+        
+    def clicar_menu(self, pos):
+        return self.menu_rect.collidepoint(pos)
+
+    def clicar_reiniciar(self, pos):
+        return self.reiniciar_rect.collidepoint(pos)
 
 #CARTAS
 class Carta:
@@ -61,8 +82,10 @@ class Jogo:
     def __init__(self):
         self.estado = TELA_INICIAL #estado do jogo
         self.tela_inicial = TelaInicial()
+        self.vencedor = ""
+        self.tela_final = TelaFinal(self.vencedor)
 
-        self.tela_de_jogo = TELA_JOGO
+        self.tela_de_jogo = pg.transform.scale(pg.image.load("imgs/tela_de_jogo.png").convert_alpha(),(LARGURA, ALTURA))
         self.baralho = self.criar_baralho()
         self.bolo = []
 
@@ -145,11 +168,11 @@ class Jogo:
 
     def checar_fim(self):
         if len(self.jogador.mao) == 0:
-            self.msg("Parabéns! Você ganhou!", VERDE)
             self.estado = TELA_FINAL
+            self.vencedor = "Você"
         elif len(self.computador.mao) == 0:
-            self.msg("O computador venceu!", VERMELHO)
             self.estado = TELA_FINAL
+            self.vencedor = "Computador"
 
     #JOGO
     def puxar(self, jogador, qtd=1):
@@ -243,7 +266,7 @@ class Jogo:
 
     #DESENHO
     def desenhar_jogo(self):
-        TELA.fill(PRETO)
+        TELA.blit(self.tela_de_jogo, (0, 0))
 
         TELA.blit(pg.transform.scale(self.ultima().img,(400,600)), (LARGURA//2-200, ALTURA//2-300))
 
@@ -279,7 +302,7 @@ class Jogo:
         if self.mensagem:
             txt, cor = self.mensagem
             texto_surf = FONTE_GRANDE.render(txt, True, cor)
-            texto_rect = texto_surf.get_rect(center = (LARGURA//2, 155))  #centraliza horizontalmente
+            texto_rect = texto_surf.get_rect(center = (LARGURA//2, 175))  #centraliza horizontalmente
             TELA.blit(texto_surf, texto_rect)
             self.msg_tempo -= 1
             if self.msg_tempo <= 0:
@@ -307,11 +330,15 @@ while True:
             jogo.jogador.uno = True
 
         if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
-            if jogo.estado==TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
+            if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
                 jogo.estado = TELA_JOGO
-            if jogo.estado==TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
+            if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
                 jogo.msg("Configurações não implementadas.", AMARELO)
-
+            if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_menu(event.pos):
+                jogo.estado = TELA_INICIAL 
+            if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_reiniciar(event.pos):
+                jogo.estado = TELA_JOGO
+            
     if jogo.estado == TELA_INICIAL:
         jogo.tela_inicial.desenhar()
 
@@ -340,4 +367,4 @@ while True:
         jogo.desenhar_jogo()
 
     elif jogo.estado == TELA_FINAL:
-        jogo.desenhar_jogo()
+        jogo.tela_final.desenhar()
