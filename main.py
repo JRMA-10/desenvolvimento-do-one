@@ -2,6 +2,7 @@ import pygame as pg
 from random import shuffle, choice
 
 pg.init()
+pg.mixer.init()
 TELA = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 LARGURA, ALTURA = TELA.get_size()
 FPS = 60
@@ -367,4 +368,5 @@ while True:
         jogo.desenhar_jogo()
 
     elif jogo.estado == TELA_FINAL:
+
         jogo.tela_final.desenhar()
