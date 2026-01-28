@@ -2,6 +2,7 @@ import pygame as pg
 from random import shuffle, choice
 
 pg.init()
+pg.init.mixer()
 TELA = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 LARGURA, ALTURA = TELA.get_size()
 FPS = 60
@@ -12,6 +13,19 @@ FONTE_GRANDE = pg.font.Font(None, 40)
 
 BRANCO, PRETO, VERMELHO, VERDE, AMARELO = (255,255,255),(0,0,0),(200,0,0),(0,200,0),(200,200,0)
 COSTA = pg.image.load("imgs/costa.png").convert_alpha()
+
+musica_atual = none
+
+#MÚSICA
+def tocar_musica(track):
+    global musica_atual
+    if musica_atual != track:
+        pg.mixer.music.stop()
+        pg.mixer.music.load(track)
+        pg.mixer.music.play(-1)
+        musica_atual = track
+
+tocar_musica("soundtrack/Main menu.ogg")
 
 #ESTADOS
 TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
@@ -343,10 +357,12 @@ while True:
         if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
                 jogo.estado = TELA_JOGO
+                tocar_musica("soundtrack/ONE!.ogg")
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
                 jogo.msg("Configurações não implementadas.", AMARELO)
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_menu(event.pos):
                 jogo = Jogo()
+                tocar_musica("soundtrack/Main menu.ogg")
                 jogo.estado = TELA_INICIAL 
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_reiniciar(event.pos):
                 jogo = Jogo()
@@ -380,4 +396,5 @@ while True:
         jogo.desenhar_jogo()
 
     elif jogo.estado == TELA_FINAL:
+
         jogo.tela_final.desenhar()
