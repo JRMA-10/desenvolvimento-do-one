@@ -2,7 +2,6 @@ import pygame as pg
 from random import shuffle, choice
 
 pg.init()
-pg.mixer.init()
 TELA = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 LARGURA, ALTURA = TELA.get_size()
 FPS = 60
@@ -13,22 +12,6 @@ FONTE_GRANDE = pg.font.Font(None, 40)
 
 BRANCO, PRETO, VERMELHO, VERDE, AMARELO = (255,255,255),(0,0,0),(200,0,0),(0,200,0),(200,200,0)
 COSTA = pg.image.load("imgs/costa.png").convert_alpha()
-
-pg.mixer.music.load("soundtrack/Main menu.ogg")
-pg.mixer.music.play(-1)
-
-musica_atual = None
-
-#MÚSICA
-def tocar_musica(track):
-    global musica_atual
-    if musica_atual != track:
-        pg.mixer.music.stop()
-        pg.mixer.music.load(track)
-        pg.mixer.music.play(-1)
-        musica_atual = track
-
-tocar_musica("soundtrack/Main menu.ogg")
 
 #ESTADOS
 TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
@@ -55,16 +38,16 @@ class TelaInicial:
         return self.config_rect.collidepoint(pos)
 
 class TelaFinal:
-    def __init__(self, vencedor):
+    def __init__(self):
         self.tela_final = pg.transform.scale(pg.image.load("imgs/tela_final.png").convert_alpha(),(LARGURA, ALTURA))
-        self.texto_vencedor = FONTE.render(f"{vencedor} venceu!", True, BRANCO)
-        self.texto_vencedor_rect = self.texto_vencedor.get_rect(center = (LARGURA//2, ALTURA//2 + 50))
+        self.texto_vencedor = FONTE_GRANDE.render(f"", True, BRANCO)
+        self.texto_vencedor_rect = self.texto_vencedor.get_rect(center = (LARGURA // 2, ALTURA // 2))
         
         self.menu = pg.transform.scale(pg.image.load("imgs/Menu.png").convert_alpha(),(250, 110))
-        self.menu_rect = self.menu.get_rect(center = (LARGURA // 2  - 60, ALTURA // 2 + 200))
+        self.menu_rect = self.menu.get_rect(center = (LARGURA // 2  - 200, ALTURA // 2 + 200))
 
         self.reiniciar = pg.transform.scale(pg.image.load("imgs/Reiniciar.png").convert_alpha(),(250, 110))
-        self.reiniciar_rect = self.reiniciar.get_rect(center=(LARGURA//2 + 60, ALTURA//2 + 200))
+        self.reiniciar_rect = self.reiniciar.get_rect(center=(LARGURA//2 + 200, ALTURA//2 + 200))
 
     def desenhar(self):
         TELA.blit(self.tela_final, (0, 0))
@@ -99,8 +82,7 @@ class Jogo:
     def __init__(self):
         self.estado = TELA_INICIAL #estado do jogo
         self.tela_inicial = TelaInicial()
-        self.vencedor = ""
-        self.tela_final = TelaFinal(self.vencedor)
+        self.tela_final = TelaFinal()
 
         self.tela_de_jogo = pg.transform.scale(pg.image.load("imgs/tela_de_jogo.png").convert_alpha(),(LARGURA, ALTURA))
         self.baralho = self.criar_baralho()
@@ -128,11 +110,13 @@ class Jogo:
         cores = ["y", "r", "g", "b"]
         for cor in cores:
             for numero in range(10):
-                baralho.extend([Carta("normal", cor, numero) for i in range(2)])
+                baralho.extend([Carta("normal", cor, numero) for i in range(3)])
             for t in ["+2", "bloqueio", "reverse"]:
-                baralho.append(Carta(t, cor))
+                for i in range(2):
+                    baralho.append(Carta(t, cor))
         for t in ["+4","+10","-4","tornado","comunista"]:
-            baralho.append(Carta(t))
+            for i in range(2):
+                baralho.append(Carta(t))
         shuffle(baralho)
         return baralho
 
@@ -154,11 +138,15 @@ class Jogo:
 
     def carta_valida(self, carta):
         ultima = self.ultima()
-        return (
-            carta.tipo in ["+4","+10","-4","tornado","comunista"]
-            or carta.cor == ultima.cor
-            or carta.numero == ultima.numero
-        )
+        if carta.tipo in ["+4", "+10", "-4", "tornado", "comunista"]:
+            return True
+        if carta.cor is not None and ultima.cor is not None:
+            if carta.cor == ultima.cor:
+                return True
+        if carta.numero is not None and ultima.numero is not None:
+            if carta.numero == ultima.numero:
+                return True
+        return False
 
     def jogador_tem_jogada(self):
         return any(self.carta_valida(c) for c in self.jogador.mao)
@@ -166,7 +154,7 @@ class Jogo:
     
 
     #MENSAGENS
-    def msg(self, texto, cor=BRANCO):
+    def msg(self, texto, cor = BRANCO):
         self.mensagem = (texto, cor)
         self.msg_tempo = 3 * FPS
 
@@ -185,11 +173,13 @@ class Jogo:
 
     def checar_fim(self):
         if len(self.jogador.mao) == 0:
+            self.tela_final.texto_vencedor = FONTE_GRANDE.render(f"Você ganhou!!", True, BRANCO)
+            self.tela_final.texto_vencedor_rect = self.tela_final.texto_vencedor.get_rect(center = (LARGURA // 2, ALTURA // 2))
             self.estado = TELA_FINAL
-            self.vencedor = "Você"
         elif len(self.computador.mao) == 0:
+            self.tela_final.texto_vencedor = FONTE_GRANDE.render(f"Computador ganhou!!", True, BRANCO)
+            self.tela_final.texto_vencedor_rect = self.tela_final.texto_vencedor.get_rect(center = (LARGURA // 2, ALTURA // 2))
             self.estado = TELA_FINAL
-            self.vencedor = "Computador"
 
     #JOGO
     def puxar(self, jogador, qtd=1):
@@ -272,7 +262,7 @@ class Jogo:
             else: 
                 cartas_totais.append(self.baralho.pop())
                 metade = quantidade_total // 2
-                self.jogador.mao = cartas_totais[:metade]
+                self.jogador.mao = cartas_totais[:metade + 1]
                 self.computador.mao = cartas_totais[metade:]
             self.msg("Comunista! Cartas igualadas", VERDE)
             carta.cor = choice(["r","g","b","y"])
@@ -281,30 +271,30 @@ class Jogo:
         else:
             self.turno = oponente
 
+
     #DESENHO
     def desenhar_jogo(self):
         TELA.blit(self.tela_de_jogo, (0, 0))
-
-        TELA.blit(pg.transform.scale(self.ultima().img,(400,600)), (LARGURA//2-200, ALTURA//2-300))
+        TELA.blit(pg.transform.scale(self.ultima().img, (400,600)), (LARGURA // 2 - 200, ALTURA // 2 - 300))
 
         largura, altura, espacamento = 100 , 150, 20
         total = len(self.jogador.mao) * (largura + espacamento) - espacamento
-        x0 = LARGURA//2 - total//2
-        y0 = ALTURA-altura-30
+        x0 = LARGURA // 2 - total // 2
+        y0 = ALTURA - altura - 30
 
         mouse = pg.mouse.get_pos()
         click = pg.mouse.get_pressed()[0]
 
-        for i, c in enumerate(self.jogador.mao[:]):
+        for i, carta in enumerate(self.jogador.mao[:]):
             x = x0 + i * (largura + espacamento)
             rect = pg.Rect(x, y0, largura, altura)
             y = y0 - 30 if rect.collidepoint(mouse) else y0
 
-            TELA.blit(pg.transform.scale(c.img, (largura,altura)), (x, y))
-            if click and rect.collidepoint(mouse) and self.turno == self.jogador and self.carta_valida(c):
-                self.jogador.mao.remove(c)
-                self.bolo.append(c)
-                self.efeito(c, self.computador)
+            TELA.blit(pg.transform.scale(carta.img, (largura, altura)), (x, y))
+            if click and rect.collidepoint(mouse) and self.turno == self.jogador and self.carta_valida(carta):
+                self.jogador.mao.remove(carta)
+                self.bolo.append(carta)
+                self.efeito(carta, self.computador)
                 self.contador_turno = 0
 
         # computador
@@ -325,10 +315,13 @@ class Jogo:
             if self.msg_tempo <= 0:
                 self.mensagem = None
 
-
         TELA.blit(FONTE.render(f"Turno: {self.turno.nome}", True, AMARELO),(20, 20))
         TELA.blit(FONTE.render(f"Cartas computador: {len(self.computador.mao)}", True, BRANCO), (20, 50))
         TELA.blit(FONTE.render(f"Tempo restante: {max(0,(self.tempo_turno-self.contador_turno)//FPS)}s",True, BRANCO), (20, 80))
+        
+        def nome_cor(cor):
+            return {"r":"vermelha", "g":"verde", "b":"azul", "y":"amarela"}[cor]
+        TELA.blit(FONTE.render(f"Cor: {nome_cor(self.ultima().cor)}", True, BRANCO), (20, 110))
 
         pg.display.flip()
 
@@ -342,6 +335,7 @@ while True:
         if event.type == pg.QUIT:
             pg.quit()
             exit()
+            
 
         if event.type == pg.KEYDOWN and event.key == pg.K_o and len(jogo.jogador.mao)==1:
             jogo.jogador.uno = True
@@ -349,18 +343,17 @@ while True:
         if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
                 jogo.estado = TELA_JOGO
-                tocar_musica("soundtrack/ONE!.ogg")
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
                 jogo.msg("Configurações não implementadas.", AMARELO)
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_menu(event.pos):
-                jogo.estado = TELA_INICIAL
-                tocar_musica("soundtrack/Main menu.ogg")
+                jogo = Jogo()
+                jogo.estado = TELA_INICIAL 
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_reiniciar(event.pos):
+                jogo = Jogo()
                 jogo.estado = TELA_JOGO
-            
+
     if jogo.estado == TELA_INICIAL:
         jogo.tela_inicial.desenhar()
-
 
     elif jogo.estado == TELA_JOGO:
 
