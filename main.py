@@ -2,7 +2,6 @@ import pygame as pg
 from random import shuffle, choice
 
 pg.init()
-pg.init.mixer()
 TELA = pg.display.set_mode((0, 0), pg.FULLSCREEN)
 LARGURA, ALTURA = TELA.get_size()
 FPS = 60
@@ -11,21 +10,8 @@ RELOGIO = pg.time.Clock()
 FONTE = pg.font.Font(None, 28)
 FONTE_GRANDE = pg.font.Font(None, 40)
 
-BRANCO, PRETO, VERMELHO, VERDE, AMARELO = (255,255,255),(0,0,0),(200,0,0),(0,200,0),(200,200,0)
+BRANCO, AZUL, VERMELHO, VERDE, AMARELO = (255,255,255), (0,200,0), (200,0,0), (0,200,0), (200,200,0)
 COSTA = pg.image.load("imgs/costa.png").convert_alpha()
-
-musica_atual = none
-
-#MÚSICA
-def tocar_musica(track):
-    global musica_atual
-    if musica_atual != track:
-        pg.mixer.music.stop()
-        pg.mixer.music.load(track)
-        pg.mixer.music.play(-1)
-        musica_atual = track
-
-tocar_musica("soundtrack/Main menu.ogg")
 
 #ESTADOS
 TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
@@ -35,14 +21,14 @@ class TelaInicial:
     def __init__(self):
         self.fundo = pg.transform.scale(pg.image.load("imgs/tela_inicial.png").convert_alpha(),(LARGURA, ALTURA))
         self.play = pg.transform.scale(pg.image.load("imgs/Play.png").convert_alpha(),(250, 110))
-        self.play_rect = self.play.get_rect(center = (LARGURA // 2 - 110, ALTURA//2 + 200))
+        self.play_rect = self.play.get_rect(center = (LARGURA // 2, ALTURA//2 + 200)) # -100 na largura
         self.config = pg.transform.scale(pg.image.load("imgs/Gear.png").convert_alpha(),(110, 110))
         self.config_rect = self.config.get_rect(center=(LARGURA//2 + 110, ALTURA//2 + 200))
 
     def desenhar(self):
         TELA.blit(self.fundo, (0, 0))
         TELA.blit(self.play, self.play_rect)
-        TELA.blit(self.config, self.config_rect)
+        #TELA.blit(self.config, self.config_rect)
         pg.display.flip()
 
     def clicar_play(self, pos):
@@ -57,11 +43,11 @@ class TelaFinal:
         self.texto_vencedor = FONTE_GRANDE.render(f"", True, BRANCO)
         self.texto_vencedor_rect = self.texto_vencedor.get_rect(center = (LARGURA // 2, ALTURA // 2))
         
-        self.menu = pg.transform.scale(pg.image.load("imgs/Menu.png").convert_alpha(),(250, 110))
+        self.menu = pg.transform.scale(pg.image.load("imgs/Menu.png").convert_alpha(),(260, 110))
         self.menu_rect = self.menu.get_rect(center = (LARGURA // 2  - 200, ALTURA // 2 + 200))
 
-        self.reiniciar = pg.transform.scale(pg.image.load("imgs/Reiniciar.png").convert_alpha(),(250, 110))
-        self.reiniciar_rect = self.reiniciar.get_rect(center=(LARGURA//2 + 200, ALTURA//2 + 200))
+        self.reiniciar = pg.transform.scale(pg.image.load("imgs/Reiniciar.png").convert_alpha(),(260, 110))
+        self.reiniciar_rect = self.reiniciar.get_rect(center = (LARGURA//2 + 200, ALTURA//2 + 200))
 
     def desenhar(self):
         TELA.blit(self.tela_final, (0, 0))
@@ -152,6 +138,8 @@ class Jogo:
 
     def carta_valida(self, carta):
         ultima = self.ultima()
+        if carta.tipo in ['bloqueio', 'reverse', '+2'] and ultima.tipo in ['bloqueio', 'reverse', '+2']:
+            return True
         if carta.tipo in ["+4", "+10", "-4", "tornado", "comunista"]:
             return True
         if carta.cor is not None and ultima.cor is not None:
@@ -164,8 +152,6 @@ class Jogo:
 
     def jogador_tem_jogada(self):
         return any(self.carta_valida(c) for c in self.jogador.mao)
-
-    
 
     #MENSAGENS
     def msg(self, texto, cor = BRANCO):
@@ -196,7 +182,7 @@ class Jogo:
             self.estado = TELA_FINAL
 
     #JOGO
-    def puxar(self, jogador, qtd=1):
+    def puxar(self, jogador, qtd = 1):
         for i in range(qtd):
             if self.baralho:
                 jogador.mao.append(self.baralho.pop())
@@ -332,9 +318,10 @@ class Jogo:
         TELA.blit(FONTE.render(f"Turno: {self.turno.nome}", True, AMARELO),(20, 20))
         TELA.blit(FONTE.render(f"Cartas computador: {len(self.computador.mao)}", True, BRANCO), (20, 50))
         TELA.blit(FONTE.render(f"Tempo restante: {max(0,(self.tempo_turno-self.contador_turno)//FPS)}s",True, BRANCO), (20, 80))
-        
+
         def nome_cor(cor):
             return {"r":"vermelha", "g":"verde", "b":"azul", "y":"amarela"}[cor]
+        
         TELA.blit(FONTE.render(f"Cor: {nome_cor(self.ultima().cor)}", True, BRANCO), (20, 110))
 
         pg.display.flip()
@@ -357,12 +344,10 @@ while True:
         if event.type == pg.MOUSEBUTTONDOWN and event.button == 1:
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
                 jogo.estado = TELA_JOGO
-                tocar_musica("soundtrack/ONE!.ogg")
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
                 jogo.msg("Configurações não implementadas.", AMARELO)
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_menu(event.pos):
                 jogo = Jogo()
-                tocar_musica("soundtrack/Main menu.ogg")
                 jogo.estado = TELA_INICIAL 
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_reiniciar(event.pos):
                 jogo = Jogo()
@@ -396,5 +381,4 @@ while True:
         jogo.desenhar_jogo()
 
     elif jogo.estado == TELA_FINAL:
-
         jogo.tela_final.desenhar()
