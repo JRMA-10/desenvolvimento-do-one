@@ -40,23 +40,35 @@ TELA_INICIAL, TELA_JOGO, TELA_FINAL = 0, 1, 2
 #TELA INICIAL
 class TelaInicial:
     def __init__(self):
+        self.volume = True
         self.fundo = pg.transform.scale(pg.image.load("imgs/tela_inicial.png").convert_alpha(),(LARGURA, ALTURA))
         self.play = pg.transform.scale(pg.image.load("imgs/Play.png").convert_alpha(),(250, 110))
-        self.play_rect = self.play.get_rect(center = (LARGURA // 2, ALTURA//2 + 200)) # -100 na largura
-        self.config = pg.transform.scale(pg.image.load("imgs/Gear.png").convert_alpha(),(110, 110))
-        self.config_rect = self.config.get_rect(center=(LARGURA//2 + 110, ALTURA//2 + 200))
+        self.play_rect = self.play.get_rect(center = (LARGURA // 2 - 100, ALTURA//2 + 200))
+        self.volume_on = pg.transform.scale(pg.image.load("imgs/volume_on.png").convert_alpha(), (110, 110))
+        self.volume_on_rect = self.volume_on.get_rect(center=(LARGURA//2 + 110, ALTURA//2 + 200))
+        self.volume_off = pg.transform.scale(pg.image.load("imgs/volume_off.png").convert_alpha(), (110, 110))
+        self.volume_off_rect = self.volume_off.get_rect(center=(LARGURA//2 + 110, ALTURA//2 + 200))
 
     def desenhar(self):
         TELA.blit(self.fundo, (0, 0))
         TELA.blit(self.play, self.play_rect)
-        #TELA.blit(self.config, self.config_rect)
+        if self.volume:
+            TELA.blit(self.volume_on, self.volume_on_rect)
+        else: 
+            TELA.blit(self.volume_off, self.volume_off_rect)
         pg.display.flip()
 
     def clicar_play(self, pos):
         return self.play_rect.collidepoint(pos)
 
-    def clicar_config(self, pos):
-        return self.config_rect.collidepoint(pos)
+    def clicar_volume(self, pos):
+        j = self.volume_on_rect.collidepoint(pos)
+        if j:
+            self.volume = False
+        elif self.volume_off_rect.collidepoint(pos):
+            j = self.volume_off_rect.collidepoint(pos)
+            self.volume = True
+        return j
 
 class TelaFinal:
     def __init__(self):
@@ -89,7 +101,11 @@ class Carta:
         self.tipo = tipo
         self.cor = cor
         self.numero = numero
-        nome = cor + str(numero) if tipo == "normal" else (cor + tipo if cor else tipo)
+        if tipo == "normal":
+            nome = cor + str(numero) 
+        else: 
+            if cor: nome = cor + tipo 
+            else: nome = tipo
         self.img = pg.image.load(f"imgs/{nome}.png").convert_alpha()
 
 class Jogador:
@@ -172,7 +188,11 @@ class Jogo:
         return False
 
     def jogador_tem_jogada(self):
-        return any(self.carta_valida(c) for c in self.jogador.mao)
+        cartas = []
+        for c in self.jogador.mao:
+            if self.carta_valida(c):
+                cartas.append(c)
+        return len(cartas) > 0 
 
     #MENSAGENS
     def msg(self, texto, cor = BRANCO):
@@ -366,9 +386,12 @@ while True:
             if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_play(event.pos):
                 jogo.estado = TELA_JOGO
                 trocar_musica("soundtrack/ONE!.ogg")
-                tocar_som("efeitos/play_button.wav")
-            if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_config(event.pos):
-                jogo.msg("Configurações não implementadas.", AMARELO)
+                tocar_som("soundtrack/soundtrack_play_button.wav")
+            if jogo.estado == TELA_INICIAL and jogo.tela_inicial.clicar_volume(event.pos):
+                if jogo.tela_inicial.volume:
+                    pg.mixer.music.set_volume(1)
+                else:
+                    pg.mixer.music.set_volume(0)
             if jogo.estado == TELA_FINAL and jogo.tela_final.clicar_menu(event.pos):
                 jogo = Jogo()
                 trocar_musica("soundtrack/Main menu.ogg")
